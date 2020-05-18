@@ -1,0 +1,237 @@
+root@spine01# run show configuration | compare rollback 2    
+[edit groups]
+   bf_underlay { ... }
++  __contrail_basic__ {
++      snmp {
++          community public {
++              authorization read-only;
++          }
++      }
++      protocols {
++          l2-learning {
++              global-mac-table-aging-time 1800;
++          }
++      }
++      policy-options {
++          policy-statement MAINTENANCE-MODE {
++              term term1 {
++                  from {
++                      family evpn;
++                      nlri-route-type [ 2 1 3 4 5 6 ];
++                  }
++                  then {
++                      community add COM-MAINTENANCE;
++                      accept;
++                  }                    
++              }
++              term term100 {
++                  then accept;
++              }
++          }
++          policy-statement REJECT-MAINTENANCE-MODE {
++              term term1 {
++                  from {
++                      family evpn;
++                      community COM-MAINTENANCE;
++                      nlri-route-type [ 2 1 3 4 5 6 ];
++                  }
++                  then reject;
++              }
++          }
++          policy-statement MAINTENANCE-MODE-underlay {
++              then {
++                  as-path-prepend "9999 9999 9999";
++                  accept;
++              }
++          }
++          community COM-MAINTENANCE members 9999:9999;
++      }                                
++  }
++  __contrail_overlay_bgp__ {
++      routing-options {
++          router-id 40.40.40.1;
++          route-distinguisher-id 40.40.40.1;
++          autonomous-system 65100 loops 2;
++          resolution {
++              rib bgp.rtarget.0 {
++                  resolution-ribs inet.0;
++              }
++          }
++      }
++      protocols {
++          bgp {
++              group _contrail_asn-64512 {
++                  type internal;
++                  local-address 40.40.40.1;
++                  hold-time 90;
++                  import REJECT-MAINTENANCE-MODE;
++                  family evpn {
++                      signaling;
++                  }
++                  family route-target; 
++                  export _contrail_ibgp_export_policy;
++                  vpn-apply-export;
++                  cluster 40.40.40.1;
++                  local-as 64512 loops 2;
++                  bfd-liveness-detection {
++                      minimum-interval 1000;
++                      multiplier 3;
++                      session-mode automatic;
++                  }
++                  multipath;
++                  neighbor 10.1.11.2 {
++                      peer-as 64512;
++                  }
++                  neighbor 10.1.11.254 {
++                      peer-as 64512;
++                  }
++                  neighbor 10.10.10.1 {
++                      peer-as 64512;
++                  }
++                  neighbor 20.20.20.1 {
++                      peer-as 64512;
++                  }
++                  neighbor 30.30.30.1 {
++                      peer-as 64512;
++                  }
++              }
++              group _contrail_asn-64512-rr {
++                  type internal;
++                  local-address 40.40.40.1;
++                  hold-time 90;
++                  import REJECT-MAINTENANCE-MODE;
++                  family evpn {
++                      signaling;
++                  }
++                  family route-target;
++                  export _contrail_ibgp_export_policy;
++                  vpn-apply-export;
++                  local-as 64512 loops 2;
++                  bfd-liveness-detection {
++                      minimum-interval 1000;
++                      multiplier 3;
++                      session-mode automatic;
++                  }
++                  multipath;
++                  neighbor 50.50.50.1 {
++                      peer-as 64512;   
++                  }
++              }
++          }
++      }
++      policy-options {
++          policy-statement _contrail_ibgp_export_policy {
++              term inet-vpn {
++                  from family inet-vpn;
++                  then {
++                      next-hop self;
++                  }
++              }
++              term inet6-vpn {
++                  from family inet6-vpn;
++                  then {
++                      next-hop self;
++                  }
++              }
++          }
++      }
++  }
++  __contrail_overlay_evpn__ {
++      routing-options {                
++          forwarding-table {
++              export EVPN-LB;
++          }
++      }
++      protocols {
++          evpn {
++              encapsulation vxlan;
++              extended-vni-list all;
++          }
++      }
++      policy-options {
++          policy-statement EVPN-LB {
++              term term1 {
++                  from protocol evpn;
++                  then {
++                      load-balance per-packet;
++                  }
++              }
++          }
++          policy-statement import-evpn {
++              term esi-in {
++                  from community community-esi-in;
++                  then accept;         
++              }
++              term default-term {
++                  then reject;
++              }
++          }
++          community community-esi-in members target:64512:7999999;
++      }
++      switch-options {
++          vtep-source-interface lo0.0;
++          route-distinguisher 40.40.40.1:7999;
++          vrf-import import-evpn;
++          vrf-target target:64512:7999999;
++      }
++  }
++  __contrail_overlay_evpn_access__ {
++      protocols {
++          evpn {
++              multicast-mode ingress-replication;
++          }
++          igmp-snooping {
++              vlan all {
++                  proxy;
++              }                        
++          }
++      }
++      switch-options {
++          vrf-target {
++              auto;
++          }
++      }
++  }
++  __contrail_overlay_evpn_gateway__;
++  __contrail_overlay_evpn_type5__ {
++      routing-options {
++          forwarding-table {
++              chained-composite-next-hop {
++                  ingress {
++                      evpn;
++                  }
++              }
++          }
++      }
++      policy-options {
++          policy-statement type5_policy {
++              term 1 {
++                  from protocol direct;
++                  then accept;
++              }
++              term 2 {
++                  from protocol static;
++                  then accept;
++              }
++              term 3 {
++                  from {
++                      protocol evpn;
++                      route-filter 0.0.0.0/0 prefix-length-range /32-/32;
++                  }
++                  then accept;
++              }
++          }
++      }
++  }
++  __contrail_overlay_dhcp_relay__;
++  __contrail_overlay_security_group_vqfx-10000__;
++  __contrail_overlay_lag__;
++  __contrail_overlay_multi_homing__;
++  __contrail_overlay_telemetry__;
+[edit]
+- apply-groups bf_underlay;             
++ apply-groups [ bf_underlay __contrail_basic__ __contrail_overlay_bgp__ __contrail_overlay_evpn__ __contrail_overlay_evpn_access__ __contrail_overlay_evpn_gateway__ __contrail_overlay_evpn_type5__ __contrail_overlay_dhcp_relay__ __contrail_overlay_security_group_vqfx-10000__ __contrail_overlay_lag__ __contrail_overlay_multi_homing__ __contrail_overlay_telemetry__ ];
+[edit system services]
++    netconf {
++        ssh;
++    }

@@ -1,0 +1,47 @@
+set version 17.4R1.16
+set groups bf_underlay system services netconf ssh
+set groups bf_underlay interfaces xe-0/0/0 mtu 9192
+set groups bf_underlay interfaces xe-0/0/0 unit 0 family inet address 192.168.10.1/31
+set groups bf_underlay interfaces xe-0/0/1 mtu 9192
+set groups bf_underlay interfaces xe-0/0/1 unit 0 family inet address 192.168.30.1/31
+set groups bf_underlay interfaces xe-0/0/2 mtu 9192
+set groups bf_underlay interfaces xe-0/0/2 unit 0 family inet address 192.168.50.1/31
+set groups bf_underlay interfaces lo0 unit 0 family inet address 40.40.40.1/32
+set groups bf_underlay routing-options router-id 40.40.40.1
+set groups bf_underlay routing-options autonomous-system 65100
+set groups bf_underlay routing-options forwarding-table export lb
+set groups bf_underlay protocols bgp group underlay type external
+set groups bf_underlay protocols bgp group underlay export exp-dir
+set groups bf_underlay protocols bgp group underlay local-as 65511
+set groups bf_underlay protocols bgp group underlay multipath multiple-as
+set groups bf_underlay protocols bgp group underlay neighbor 192.168.10.0 peer-as 65501
+set groups bf_underlay protocols bgp group underlay neighbor 192.168.30.0 peer-as 65502
+set groups bf_underlay protocols bgp group underlay neighbor 192.168.50.0 peer-as 65503
+set groups bf_underlay protocols lldp interface all
+set groups bf_underlay policy-options policy-statement lb then load-balance per-packet
+set groups bf_underlay policy-options policy-statement exp-dir term lo0 from protocol direct
+set groups bf_underlay policy-options policy-statement exp-dir term lo0 from interface lo0.0
+set groups bf_underlay policy-options policy-statement exp-dir term lo0 then community set spine
+set groups bf_underlay policy-options policy-statement exp-dir term lo0 then accept
+set groups bf_underlay policy-options policy-statement exp-dir term leaf from as-path single
+set groups bf_underlay policy-options policy-statement exp-dir term leaf from community leaf
+set groups bf_underlay policy-options policy-statement exp-dir term leaf then accept
+set groups bf_underlay policy-options policy-statement exp-dir then reject
+set groups bf_underlay policy-options community leaf members 65100:1
+set groups bf_underlay policy-options community spine members 65100:2
+set groups bf_underlay policy-options as-path single .
+set apply-groups bf_underlay            
+set system host-name spine01
+set system root-authentication encrypted-password "$6$L5IVB37r$XY8Gj6C00vd7vOJSn.b7rLjqm8fYXIdpfXfvUvUXBaY3//Swe7O9By7a3wQDAPhOo91bzwjtOmv.k7GXpGc8c1"
+set system services ssh root-login allow
+set system syslog user * any emergency
+set system syslog file messages any notice
+set system syslog file messages authorization info
+set system syslog file interactive-commands interactive-commands any
+set system extensions providers juniper license-type juniper deployment-scope commercial
+set system extensions providers chef license-type juniper deployment-scope commercial
+set interfaces em0 unit 0 family inet address 192.168.1.41/24
+set interfaces em1 unit 0 family inet address 169.254.0.2/24
+set forwarding-options storm-control-profiles default all
+set protocols igmp-snooping vlan default
+set vlans default vlan-id 1
