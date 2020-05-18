@@ -7,4 +7,6 @@ testing 123
 [CFM Fabric Deletion - Part 02](https://youtu.be/-6HUY9rpjfc)
 
 
-test123
+Lab-Topology
+
+![](images/pic01.png)
